@@ -6,6 +6,8 @@
 #include <vector>
 #include <filesystem>
 #include <unistd.h>
+#include <sys/mman.h>
+#include <sys/wait.h>
 
 bool fileExecutableExists(std::string file_path);
 void splitString(std::string text, char d, std::vector<std::string>& result);
@@ -39,12 +41,81 @@ int main (int argc, char **argv)
     //   If yes, execute it
     //   If no, print error statement: "<command_name>: Error command not found" (do include newline)
 
+    while(true){
+        std::cout << "osshell> ";
+        std::getline(std::cin, user_command);
+        //store exit as well in history?
+        //clear history after every run?
+
+        //Special commands
+        if(user_command == "exit"){
+            break;
+        } 
+        
+        if(user_command == "history"){
+            for(int i = 0; i < history.size(); i++){
+                printf("%2d: %s\n", i + 1, history[i].c_str());   
+        }
+        continue;
+        }else if(user_command.empty()){
+            continue;
+        }
+
+        //store in history
+        history.push_back(user_command);
+
+        //check size
+        if(history.size() > 128){
+            history.erase(history.begin());
+        }
+        //split the command
+        splitString(user_command, ' ', command_list);
+        vectorOfStringsToArrayOfCharArrays(command_list, &command_list_exec);
+
+        bool found = false;
+        std::string found_path;
+    
+        //search in path
+        for(int i = 0; i < os_path_list.size(); i++){
+            //create path
+            std::string command_path = os_path_list[i] + "/" +  command_list_exec[0];
+            //found command
+
+            int pid = fork();
+
+            if(pid == 0){
+                //exe
+                exec(command_path);
+            }else{
+                int status;
+                waitpid(pid, &status, 0);
+            }
+
+            exec(command_path, );
+            }                                                                                                                                                                                                                                                                        
+        }
+
+        if(found){
+            pid = fork();
+        }else{
+            int staus
+        }
+        if(!found){
+          std::cout << user_command << ": Error command not found" << std::endl;  
+        }
+        //free memory
+        freeArrayOfCharArrays(command_list_exec, command_list.size() + 1);
 
 
+    }
+    
+
+    
     /************************************************************************************
      *   Example code - remove in actual program                                        *
      ************************************************************************************/
     // Shows how to loop over the directories in the PATH environment variable
+    /*
     int i;
     for (i = 0; i < os_path_list.size(); i++)
     {
