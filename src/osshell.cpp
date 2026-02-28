@@ -49,29 +49,50 @@ int main (int argc, char **argv)
         if(user_command == "exit"){
             break;
         } 
-        
-        if(user_command == "history"){
-            for(int i = 0; i < history.size(); i++){
-                printf("%2d: %s\n", i + 1, history[i].c_str());   
-        }
-        continue;
-        }
 
         if(user_command.empty()){
             continue;
         }
 
-        //store in history
+        //split the user_command
+        splitString(user_command, ' ', command_list);
+        vectorOfStringsToArrayOfCharArrays(command_list, &command_list_exec);
+        
+        //History handling
+        if(command_list[0] == "history"){
+            //just history command
+            if(command_list.size() == 1){
+                for(int i = 0; i < history.size(); i++){
+                    printf("%2d: %s\n", i + 1, history[i].c_str());   
+            }
+            continue;
+            }else if(command_list[1] == "clear"){
+                history.clear();
+                continue;
+            }else if(command_list.size() == 2){
+                int count = std::stoi(command_list[1]);
+                if(count > 0){
+                    int start = history.size() - count;
+                    if(start < 0) start = 0;
+                    for(int i = start; i < history.size(); i++){
+                        printf("%2d: %s\n", i + 1, history[i].c_str()); 
+                    }
+                    continue;
+                }else{
+                    std::cout << "Error: history expects an integer > 0 (or 'clear')" << std::endl; 
+                }
+            }else{
+                std::cout << "Error: history expects an integer > 0 (or 'clear')" << std::endl;
+            }
+        }
+
+         //store in history
         history.push_back(user_command);
 
         //check size
         if(history.size() > 128){
             history.erase(history.begin());
         }
-
-        //split the user_command
-        splitString(user_command, ' ', command_list);
-        vectorOfStringsToArrayOfCharArrays(command_list, &command_list_exec);
 
         bool found = false;
         std::string found_path;
@@ -104,7 +125,7 @@ int main (int argc, char **argv)
         if(!found){
           std::cout << command_list_exec[0] << ": Error command not found" << std::endl;  
         }
-        
+
         //free memory
         freeArrayOfCharArrays(command_list_exec, command_list.size() + 1);
 
