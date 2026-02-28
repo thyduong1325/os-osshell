@@ -44,8 +44,6 @@ int main (int argc, char **argv)
     while(true){
         std::cout << "osshell> ";
         std::getline(std::cin, user_command);
-        //store exit as well in history?
-        //clear history after every run?
 
         //Special commands
         if(user_command == "exit"){
@@ -57,7 +55,9 @@ int main (int argc, char **argv)
                 printf("%2d: %s\n", i + 1, history[i].c_str());   
         }
         continue;
-        }else if(user_command.empty()){
+        }
+
+        if(user_command.empty()){
             continue;
         }
 
@@ -68,46 +68,51 @@ int main (int argc, char **argv)
         if(history.size() > 128){
             history.erase(history.begin());
         }
-        //split the command
+
+        //split the user_command
         splitString(user_command, ' ', command_list);
         vectorOfStringsToArrayOfCharArrays(command_list, &command_list_exec);
 
         bool found = false;
         std::string found_path;
-    
+
         //search in path
         for(int i = 0; i < os_path_list.size(); i++){
             //create path
             std::string command_path = os_path_list[i] + "/" +  command_list_exec[0];
+
             //found command
+            if(access(command_path.c_str(), X_OK) == 0){
+                found = true;
+                found_path = command_path;
+                break;
+            }
+        }                                                                                                                                                                                                                                                                        
+        
 
-            int pid = fork();
-
+        if(found){
+            pid_t pid = fork();
             if(pid == 0){
-                //exe
-                exec(command_path);
+                //execute
+                execv(found_path.c_str(), command_list_exec);
             }else{
                 int status;
                 waitpid(pid, &status, 0);
             }
-
-            exec(command_path, );
-            }                                                                                                                                                                                                                                                                        
         }
 
-        if(found){
-            pid = fork();
-        }else{
-            int staus
-        }
         if(!found){
-          std::cout << user_command << ": Error command not found" << std::endl;  
+          std::cout << command_list_exec[0] << ": Error command not found" << std::endl;  
         }
+        
         //free memory
         freeArrayOfCharArrays(command_list_exec, command_list.size() + 1);
 
 
     }
+
+
+    
     
 
     
