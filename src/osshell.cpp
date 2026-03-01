@@ -41,12 +41,52 @@ int main (int argc, char **argv)
     //   If yes, execute it
     //   If no, print error statement: "<command_name>: Error command not found" (do include newline)
 
+    std::filesystem::path history_path = "history.txt";
+
+    if(std::filesystem::exists(history_path)){
+        FILE* load_file = fopen(history_path.c_str(), "r");
+
+        if(load_file != NULL){
+            // The buffer
+            char command[1024];
+
+            while(fgets(command, sizeof(command), load_file) != NULL){
+
+                // Convert char to string
+                std::string line = command;
+
+                // Remove newline characters
+                if(!line.empty() && line.back() == '\n'){
+                    line.pop_back();
+                }
+            
+            // Store the command line in history
+            history.push_back(line);
+            }
+        fclose(load_file);
+        }
+    }
+
     while(true){
         std::cout << "osshell> ";
         std::getline(std::cin, user_command);
 
         // Exit command
         if(user_command == "exit"){
+
+            // Save commands in the history file
+            FILE* save_file = fopen(history_path.c_str(), "w");
+
+            if (save_file != NULL) {
+                for (int i = 0; i < history.size(); i++) {
+                    fprintf(save_file, "%s\n", history[i].c_str());
+                }
+                
+                // Close file and save
+                fclose(save_file);
+                
+            }
+            // QSN: Ask the Prof if we need any error handling here 
             break;
         } 
 
@@ -80,7 +120,7 @@ int main (int argc, char **argv)
                     int start = history.size() - count;
                     if(start < 0) start = 0;
                     for(int i = start; i < history.size(); i++){
-                        printf("%2d: %s\n", i + 1, history[i].c_str()); 
+                        printf("%3d: %s\n", i + 1, history[i].c_str()); 
                     }
                 }else{
                     std::cout << "Error: history expects an integer > 0 (or 'clear')" << std::endl;
