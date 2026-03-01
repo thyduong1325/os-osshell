@@ -45,31 +45,36 @@ int main (int argc, char **argv)
         std::cout << "osshell> ";
         std::getline(std::cin, user_command);
 
-        //Special commands
+        // Exit command
         if(user_command == "exit"){
             break;
         } 
 
+        // Empty command
         if(user_command.empty()){
             continue;
         }
 
-        //split the user_command
+        // Split the user_command
         splitString(user_command, ' ', command_list);
         vectorOfStringsToArrayOfCharArrays(command_list, &command_list_exec);
         
-        //History handling
-        if(command_list[0] == "history"){
+        // History handling
+        if(command_list[0] == "history" && command_list.size() <=2){
             //just history command
             if(command_list.size() == 1){
                 for(int i = 0; i < history.size(); i++){
-                    printf("%2d: %s\n", i + 1, history[i].c_str());   
-            }
-            continue;
-            }else if(command_list[1] == "clear"){
-                history.clear();
-                continue;
+                    printf("%3d: %s\n", i + 1, history[i].c_str()); // THY: Changed to 3d as up to 128 commands
+                }
+                // THY: Need to push_back "history" to the history list, only when "history clear" will not
+
             }else if(command_list.size() == 2){
+                if(command_list[1] == "clear"){
+                    history.clear();
+                    continue; // To not store in the history
+                }
+
+                // THY: EDGE CASE: what if the input is "history 4x"
                 int count = std::stoi(command_list[1]);
                 if(count > 0){
                     int start = history.size() - count;
@@ -77,59 +82,69 @@ int main (int argc, char **argv)
                     for(int i = start; i < history.size(); i++){
                         printf("%2d: %s\n", i + 1, history[i].c_str()); 
                     }
-                    continue;
                 }else{
-                    std::cout << "Error: history expects an integer > 0 (or 'clear')" << std::endl; 
+                    std::cout << "Error: history expects an integer > 0 (or 'clear')" << std::endl;
                 }
-            }else{
-                std::cout << "Error: history expects an integer > 0 (or 'clear')" << std::endl;
             }
+            // Store in history list and restart the main loop. 
+            // THY: Otherwise, it will print the error message of "history command not found"
+            history.push_back(user_command);
+            continue;
+            // THY: Removed the else part as it will be handle by the outer code
         }
 
-         //store in history
+        // Store in history
         history.push_back(user_command);
 
-        //check size
+        // Check size
+        // THY: EDGE CASE: Ask prof how does he want us to handle this edge case
         if(history.size() > 128){
             history.erase(history.begin());
         }
 
         bool found = false;
         std::string found_path;
-
-        //search in path
-        for(int i = 0; i < os_path_list.size(); i++){
-            //create path
-            std::string command_path = os_path_list[i] + "/" +  command_list_exec[0];
-
-            //found command
-            if(access(command_path.c_str(), X_OK) == 0){
-                found = true;
-                found_path = command_path;
-                break;
-            }
-        }                                                                                                                                                                                                                                                                        
         
+        // User input starts with a dot (.) or slash (/)
+        if (command_list_exec[0][0] == '.' || command_list_exec[0][0] == '/'){
+            // Search for the command
+            if(fileExecutableExists(command_list_exec[0])){
+                found = true;
+                found_path = command_list_exec[0];
+            }
+        }else {
+            // Loop through the PATH environment variable
+            // LOGIC ERROR: Ask prof as the output of the "which grep" input is "usr/bin/grep" not "/bin/grep"
+            for(int i = 0; i < os_path_list.size(); i++){
+                // Combine PATH environment variable with the first element of the enetered command
+                std::string command_path = os_path_list[i] + "/" +  command_list_exec[0];
 
+                // Search the combined command
+                if(fileExecutableExists(command_path.c_str())){
+                    found = true;
+                    found_path = command_path;
+                    break;
+                }
+            } 
+        }
+
+        // If found, spawn a new process to run that executable, and wait for its completion
         if(found){
             pid_t pid = fork();
             if(pid == 0){
-                //execute
                 execv(found_path.c_str(), command_list_exec);
             }else{
                 int status;
                 waitpid(pid, &status, 0);
             }
+        }else {
+            // If not found, print the error message
+            // FORMAT ERROR: Ask prof if the command in the error message is the whole user input or only the first name
+            std::cout << user_command.c_str() << ": Error command not found" << std::endl;  
         }
 
-        if(!found){
-          std::cout << command_list_exec[0] << ": Error command not found" << std::endl;  
-        }
-
-        //free memory
+        // Free memory
         freeArrayOfCharArrays(command_list_exec, command_list.size() + 1);
-
-
     }
 
 
@@ -178,6 +193,7 @@ int main (int argc, char **argv)
     // free memory for `command_list_exec`
     freeArrayOfCharArrays(command_list_exec, command_list.size() + 1);
     printf("------\n");
+    */
     /************************************************************************************
      *   End example code                                                               *
      ************************************************************************************/
@@ -196,6 +212,17 @@ bool fileExecutableExists(std::string file_path)
     // check if `file_path` exists
     // if so, ensure it is not a directory and that it has executable permissions
 
+    // Convert string to a filesystem path object
+    std::filesystem::path p(file_path);
+
+    // Check if the path exists and ensure it is a regular file (not a directory)
+    if (std::filesystem::exists(p) && std::filesystem::is_regular_file(p)) {
+        
+        // Check for executable permissions
+        if (access(file_path.c_str(), X_OK) == 0) {
+            exists = true;
+        }
+    }
     return exists;
 }
 
