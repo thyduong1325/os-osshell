@@ -44,7 +44,7 @@ int main (int argc, char **argv)
     std::filesystem::path history_path = "history.txt";
 
     if(std::filesystem::exists(history_path)){
-        FILE* load_file = fopen(history_path.c_str(), "r");
+        FILE* load_file = fopen(history_path.string().c_str(), "r");
 
         if(load_file != NULL){
             // The buffer
@@ -57,6 +57,10 @@ int main (int argc, char **argv)
 
                 // Remove newline characters
                 if(!line.empty() && line.back() == '\n'){
+                    line.pop_back();
+                }
+
+                if (!line.empty() && line.back() == '\r') {
                     line.pop_back();
                 }
             
@@ -74,6 +78,9 @@ int main (int argc, char **argv)
         // Exit command
         if(user_command == "exit"){
 
+            // Store in history
+            history.push_back(user_command);
+
             // Save commands in the history file
             FILE* save_file = fopen(history_path.c_str(), "w");
 
@@ -86,12 +93,21 @@ int main (int argc, char **argv)
                 fclose(save_file);
                 
             }
-            // QSN: Ask the Prof if we need any error handling here 
+            std::cout << std::endl;
             break;
         } 
 
-        // Empty command
-        if(user_command.empty()){
+        // Create a stream to "read" the command
+        std::stringstream ss(user_command);
+        std::string first_word;
+
+        // If the input is only spaces, ss >> first_word will fail
+        if (!(ss >> first_word)) {
+            continue; // User entered only spaces or just hit enter
+        }
+
+        // Empty string
+        if (user_command.empty()) {
             continue;
         }
 
@@ -101,12 +117,11 @@ int main (int argc, char **argv)
         
         // History handling
         if(command_list[0] == "history" && command_list.size() <=2){
-            //just history command
+            // Just history command
             if(command_list.size() == 1){
                 for(int i = 0; i < history.size(); i++){
-                    printf("%3d: %s\n", i + 1, history[i].c_str()); // THY: Changed to 3d as up to 128 commands
+                    printf("%3d: %s\n", i + 1, history[i].c_str());
                 }
-                // THY: Need to push_back "history" to the history list, only when "history clear" will not
 
             }else if(command_list.size() == 2){
                 if(command_list[1] == "clear"){
@@ -114,9 +129,9 @@ int main (int argc, char **argv)
                     continue; // To not store in the history
                 }
 
-                // THY: EDGE CASE: what if the input is "history 4x"
-                int count = std::stoi(command_list[1]);
-                if(count > 0){
+                size_t length;
+                int count = std::stoi(command_list[1], &length);
+                if(count > 0 && length == command_list[1].size()){
                     int start = history.size() - count;
                     if(start < 0) start = 0;
                     for(int i = start; i < history.size(); i++){
@@ -126,18 +141,15 @@ int main (int argc, char **argv)
                     std::cout << "Error: history expects an integer > 0 (or 'clear')" << std::endl;
                 }
             }
-            // Store in history list and restart the main loop. 
-            // THY: Otherwise, it will print the error message of "history command not found"
+            // Store in history list and restart the main loop
             history.push_back(user_command);
             continue;
-            // THY: Removed the else part as it will be handle by the outer code
         }
 
         // Store in history
         history.push_back(user_command);
 
         // Check size
-        // THY: EDGE CASE: Ask prof how does he want us to handle this edge case
         if(history.size() > 128){
             history.erase(history.begin());
         }
@@ -154,7 +166,6 @@ int main (int argc, char **argv)
             }
         }else {
             // Loop through the PATH environment variable
-            // LOGIC ERROR: Ask prof as the output of the "which grep" input is "usr/bin/grep" not "/bin/grep"
             for(int i = 0; i < os_path_list.size(); i++){
                 // Combine PATH environment variable with the first element of the enetered command
                 std::string command_path = os_path_list[i] + "/" +  command_list_exec[0];
@@ -179,65 +190,12 @@ int main (int argc, char **argv)
             }
         }else {
             // If not found, print the error message
-            // FORMAT ERROR: Ask prof if the command in the error message is the whole user input or only the first name
-            std::cout << user_command.c_str() << ": Error command not found" << std::endl;  
+            std::cout << command_list_exec[0] << ": Error command not found" << std::endl;  
         }
 
         // Free memory
         freeArrayOfCharArrays(command_list_exec, command_list.size() + 1);
     }
-
-
-    
-    
-
-    
-    /************************************************************************************
-     *   Example code - remove in actual program                                        *
-     ************************************************************************************/
-    // Shows how to loop over the directories in the PATH environment variable
-    /*
-    int i;
-    for (i = 0; i < os_path_list.size(); i++)
-    {
-        printf("PATH[%2d]: %s\n", i, os_path_list[i].c_str());
-    }
-    printf("------\n");
-    
-    // Shows how to split a command and prepare for the execv() function
-    std::string example_command = "ls -lh";
-    splitString(example_command, ' ', command_list);
-    vectorOfStringsToArrayOfCharArrays(command_list, &command_list_exec);
-    // use `command_list_exec` in the execv() function rather than looping and printing
-    i = 0;
-    while (command_list_exec[i] != NULL)
-    {
-        printf("CMD[%2d]: %s\n", i, command_list_exec[i]);
-        i++;
-    }
-    // free memory for `command_list_exec`
-    freeArrayOfCharArrays(command_list_exec, command_list.size() + 1);
-    printf("------\n");
-
-    // Second example command - reuse the `command_list` and `command_list_exec` variables
-    example_command = "echo \"Hello world\" I am alive!";
-    splitString(example_command, ' ', command_list);
-    vectorOfStringsToArrayOfCharArrays(command_list, &command_list_exec);
-    // use `command_list_exec` in the execv() function rather than looping and printing
-    i = 0;
-    while (command_list_exec[i] != NULL)
-    {
-        printf("CMD[%2d]: %s\n", i, command_list_exec[i]);
-        i++;
-    }
-    // free memory for `command_list_exec`
-    freeArrayOfCharArrays(command_list_exec, command_list.size() + 1);
-    printf("------\n");
-    */
-    /************************************************************************************
-     *   End example code                                                               *
-     ************************************************************************************/
-
 
     return 0;
 }
@@ -249,8 +207,8 @@ int main (int argc, char **argv)
 bool fileExecutableExists(std::string file_path)
 {
     bool exists = false;
-    // check if `file_path` exists
-    // if so, ensure it is not a directory and that it has executable permissions
+    // Check if `file_path` exists
+    // If so, ensure it is not a directory and that it has executable permissions
 
     // Convert string to a filesystem path object
     std::filesystem::path p(file_path);
